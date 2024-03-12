@@ -15,7 +15,8 @@ const regiserUser = asyncHandler(async (req, res) => {
   //return responce
 
   const { fullName, email, userName, password } = req.body;
-  console.log("email:", email);
+
+  // console.log("email:", email);
 
   if (
     [fullName, email, userName, password].some((field) => field?.trim() === "")
@@ -29,8 +30,14 @@ const regiserUser = asyncHandler(async (req, res) => {
   if (existedUser) {
     throw new apiError(409, "User With email and username already exist");
   }
+  // console.log(req.files)
   const avatarLocalPath = req.files?.avatar[0]?.path;
-  const coverImageLocalPath = req.files?.coverImage[0].path;
+  // const coverImageLocalPath = req.files?.coverImage[0].path;
+
+  let coverImageLocalPath;
+    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+        coverImageLocalPath = req.files.coverImage[0].path
+    }
 
   if (!avatarLocalPath) {
     throw new apiError(400, "avatar file is required ");
