@@ -1,1 +1,1 @@
-export const DB_NAME = "sakura_anime"
+export const DB_NAME = "Rohan"

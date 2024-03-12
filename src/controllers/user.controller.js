@@ -2,7 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { apiError } from "../utils/apiError.js";
 import { user } from "../models/user.model.js ";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
-import {apiResponce} from "../utils/apiResponce.js"
+import { apiResponce } from "../utils/apiResponce.js";
 const regiserUser = asyncHandler(async (req, res) => {
   //get user details from frontend
   // validation - not empty
@@ -23,7 +23,7 @@ const regiserUser = asyncHandler(async (req, res) => {
     throw new apiError(400, "All field Are Complesary Required");
   }
 
-  const existedUser = user.findOne({
+  const existedUser = await user.findOne({
     $or: [{ userName }, { email }],
   });
   if (existedUser) {
@@ -46,23 +46,22 @@ const regiserUser = asyncHandler(async (req, res) => {
   const tempuser = await user.create({
     fullName,
     avatar: avatar.url,
-    coverImage: coverImage?.url || "", 
+    coverImage: coverImage?.url || "",
     email,
     password,
-    userName: userName.toLowerCase()
-  })
+    userName: userName.toLowerCase(),
+  });
 
- const createdUser = await user.findById(tempuser._id).select(
-    "-password -refreshToken"
- )
- if (!createdUser) {
-    throw new apiError(500,"something went wrong while regitering a user")
-    
- }
+  const createdUser = await user
+    .findById(tempuser._id)
+    .select("-password -refreshToken");
+  if (!createdUser) {
+    throw new apiError(500, "something went wrong while regitering a user");
+  }
 
- return res.status(201).json(
-    new apiResponce(200,createdUser, "User Registered Sucessfully")
- )
+  return res
+    .status(201)
+    .json(new apiResponce(200, createdUser, "User Registered Sucessfully"));
 
   //   if (fullName === "") {
   //     throw new apiError(400, "Full Name Is Required");
