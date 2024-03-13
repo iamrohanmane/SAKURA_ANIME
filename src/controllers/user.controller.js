@@ -1,8 +1,25 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { apiError } from "../utils/apiError.js";
-import { user } from "../models/user.model.js ";
+import {user} from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { apiResponce } from "../utils/apiResponce.js";
+
+const generateAccessAndRefereshTokens= async(userId) =>{
+  try {
+    const tempuser = await user.findById(userId)
+    const accessToken = tempuser.generateAccessToken()
+    const refreshToken  = tempuser.generateRefreeshToken()
+
+    tempuser.refreshToken = refreshToken 
+    await tempuser.save({validateBeforeSave :false})
+    //return access token and referesh token 
+    return(accessToken, refreshToken)
+
+
+  } catch (error) {
+    throw new apiError(500, "Something Went Wrong While Generating Accesss and Referech token")
+  }
+}
 const regiserUser = asyncHandler(async (req, res) => {
   //get user details from frontend
   // validation - not empty
@@ -35,9 +52,13 @@ const regiserUser = asyncHandler(async (req, res) => {
   // const coverImageLocalPath = req.files?.coverImage[0].path;
 
   let coverImageLocalPath;
-    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
-        coverImageLocalPath = req.files.coverImage[0].path
-    }
+  if (
+    req.files &&
+    Array.isArray(req.files.coverImage) &&
+    req.files.coverImage.length > 0
+  ) {
+    coverImageLocalPath = req.files.coverImage[0].path;
+  }
 
   if (!avatarLocalPath) {
     throw new apiError(400, "avatar file is required ");
@@ -75,4 +96,80 @@ const regiserUser = asyncHandler(async (req, res) => {
   //   }
 });
 
-export { regiserUser };
+const loginUser = asyncHandler(async (req, res) => {
+  // req body -> data
+  //username or email
+  //find the user
+  //password check
+  //access and referesh token
+  //send cookie
+
+  const { email, userName, password } = req.body;
+
+  if (!userName && !email) {
+    throw new apiError(400, "userName or Email is Required");
+  }
+
+  const tempuser = await user.findOne({
+    $or: [{ userName }, { email }],
+  });
+
+  if (!tempuser) {
+    throw new apiError(404, "User Does not Exist");
+  }
+  const isPasswordValid = await tempuser.isPasswordCorrect(password);
+  
+  if (!isPasswordValid){
+    throw new apiError(401,"Invalid User Credentials");
+  }
+  const {accessToken, refreshToken} = await generateAccessAndRefereshTokens(tempuser._id)
+  const loggedInUser = await user.findById(tempuser._id)
+  select("-password -refreshToken")
+
+  const options = {
+     httpOnly:true,
+     secure:true
+  }
+
+  return res
+  .status(200)
+  .cookie("accessToken", accessToken ,options)
+  .cookie("refreshToken",refreshToken,options )
+  .json(
+    new apiResponce(
+      200,
+      {
+        tempuser : loggedInUser , accessToken , refreshToken
+      },
+      "User Logged In Sucessfully"
+    ) 
+  )
+ 
+});
+
+const logoutUser = asyncHandler(async(req,res)=>{
+   await user.findByIdAndUpdate(
+      req.tempuser._id,
+      {
+        $set:{
+          refreshToken: undefined
+        }
+      },
+      {
+        new: true
+      }
+    )
+
+    const options = {
+      httpOnly:true,
+      secure:true
+    }
+
+    return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new apiResponce(200, {}, "User Logged Out"))
+
+})
+export {  regiserUser, loginUser , logoutUser };
