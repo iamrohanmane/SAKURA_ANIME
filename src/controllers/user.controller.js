@@ -1,25 +1,31 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { apiError } from "../utils/apiError.js";
-import {user} from "../models/user.model.js";
+import { user } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { apiResponce } from "../utils/apiResponce.js";
 
-const generateAccessAndRefereshTokens = async(userId) =>{
+const generateAccessAndRefereshTokens = async(userId) => {
+  console.log(userId)
   try {
-    const tempuser = await user.findById(userId)
-    const accessToken = tempuser.generateAccessToken()
-    const refreshToken  = tempuser.generateRefreeshToken()
-
-    tempuser.refreshToken = refreshToken 
-    await tempuser.save({validateBeforeSave :false})
-    //return access token and referesh token 
-    return(accessToken, refreshToken)
-  } 
-  catch(error) {
-    throw new apiError(500, "Something Went Wrong While Generating Accesss and Referech token")
+    const tempuser = await user.findById(userId);
+    const accessToken = tempuser.generateAccessToken();
+    const refreshToken = tempuser.generateRefreeshToken();
+    // console.log(userId);
+    // console.log(accessToken)
+    // console.log(refreshToken)
+    tempuser.refreshToken = refreshToken;
+    await tempuser.save({ validateBeforeSave: false });
+    //return access token and referesh token
+    return accessToken, refreshToken;
+  } catch (error) {
+  // console.log(error)
+    throw new apiError(
+      500,
+      "Something Went Wrong While Generating Accesss and Referech token",
+    );
   }
-}
-const regiserUser = asyncHandler(async(req, res) => {
+};
+const regiserUser = asyncHandler(async (req, res) => {
   //get user details from frontend
   // validation - not empty
   //check if user already exists - username , email
@@ -117,57 +123,59 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new apiError(404, "User Does not Exist");
   }
   const isPasswordValid = await tempuser.isPasswordCorrect(password);
-  
-  if (!isPasswordValid){
-    throw new apiError(401,"Invalid User Credentials");
+
+  if (!isPasswordValid) {
+    throw new apiError(401, "Invalid User Credentials");
   }
-  const {accessToken, refreshToken} = await generateAccessAndRefereshTokens(tempuser._id)
-  const loggedInUser = await user.findById(tempuser._id).select("-password -refreshToken")
+  const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(tempuser._id);
+  const loggedInUser = await user
+    .findById(tempuser._id)
+    .select("-password -refreshToken");
 
   const options = {
-     httpOnly:true,
-     secure:true
-  }
+    httpOnly: true,
+    secure: true,
+  };
 
   return res
-  .status(200)
-  .cookie("accessToken", accessToken ,options)
-  .cookie("refreshToken",refreshToken,options)
-  .json(
-    new apiResponce(
-      200,
-      {
-        tempuser: loggedInUser, accessToken, refreshToken
-      },
-      "User Logged In Sucessfully"
-    ) 
-  )
- 
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new apiResponce(
+        200,
+        {
+          tempuser: loggedInUser,
+          accessToken,
+          refreshToken,
+        },
+        "User Logged In Sucessfully",
+      ),
+    );
 });
 
-const logoutUser = asyncHandler(async(req,res)=>{
-   await user.findByIdAndUpdate(
-      req.tempuser._id,
-      {
-        $unset:{
-          refreshToken: 1
-        }
+const logoutUser = asyncHandler(async (req, res) => {
+  await user.findByIdAndUpdate(
+    req.tempuser._id,
+    {
+      $unset: {
+        refreshToken: 1,
       },
-      {
-        new: true
-      }
-    )
+    },
+    {
+      new: true,
+    },
+  );
 
-    const options = {
-      httpOnly:true,
-      secure:true
-    }
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
 
-    return res
+  return res
     .status(200)
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
-    .json(new apiResponce(200, {}, "User Logged Out"))
-
-})
-export {  regiserUser, loginUser , logoutUser };
+    .json(new apiResponce(200, {}, "User Logged Out"));
+});
+export { regiserUser, loginUser, logoutUser };
