@@ -5,7 +5,7 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { apiResponce } from "../utils/apiResponce.js";
 
 const generateAccessAndRefereshTokens = async(userId) => {
-  console.log(userId)
+  // console.log(userId)
   try {
     const tempuser = await user.findById(userId);
     const accessToken = tempuser.generateAccessToken();
@@ -16,7 +16,7 @@ const generateAccessAndRefereshTokens = async(userId) => {
     tempuser.refreshToken = refreshToken;
     await tempuser.save({ validateBeforeSave: false });
     //return access token and referesh token
-    return accessToken, refreshToken;
+    return {accessToken, refreshToken};
   } catch (error) {
   // console.log(error)
     throw new apiError(
