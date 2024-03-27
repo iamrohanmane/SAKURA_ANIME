@@ -3,7 +3,7 @@ import { apiError } from "../utils/apiError.js";
 import { user } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { apiResponce } from "../utils/apiResponce.js";
-
+import jwt from "jsonwebtoken"
 const generateAccessAndRefereshTokens = async(userId) => {
   // console.log(userId)
   try {
@@ -178,4 +178,27 @@ const logoutUser = asyncHandler(async (req, res) => {
     .clearCookie("refreshToken", options)
     .json(new apiResponce(200, {}, "User Logged Out"));
 });
+
+const refreshAccessToken = asyncHandler(async(req, res) =>{
+  const incomingRereshToken = req.cookies.refreshToken || req.body.refreshToken
+
+  if(!incomingRereshToken){
+    throw new apiError(401, "unauthorized request")
+  }
+  
+  const decodedToken = jwt.verify(
+    incomingRereshToken,
+    process.env.REFRESH_TOKEN_SECRET
+
+  )
+
+  const tempuser = await user.findById(decodedToken?._id)
+  if(!tempuser){
+    throw new apiError(401, "Invalid Refresh Token")
+  }
+
+  if(incomingRereshToken !== tempuser?.refreshToken){
+    throw new apiError(401, "refresh token i expired or used")
+  }
+})
 export { regiserUser, loginUser, logoutUser };
