@@ -4,7 +4,7 @@ import { user } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { apiResponce } from "../utils/apiResponce.js";
 import jwt from "jsonwebtoken"
-const generateAccessAndRefereshTokens = async(userId) => {
+const generateAccessAndRefereshTokens = async (userId) => {
   // console.log(userId)
   try {
     const tempuser = await user.findById(userId);
@@ -16,9 +16,9 @@ const generateAccessAndRefereshTokens = async(userId) => {
     tempuser.refreshToken = refreshToken;
     await tempuser.save({ validateBeforeSave: false });
     //return access token and referesh token
-    return {accessToken, refreshToken};
+    return { accessToken, refreshToken };
   } catch (error) {
-  // console.log(error)
+    // console.log(error)
     throw new apiError(
       500,
       "Something Went Wrong While Generating Accesss and Referech token",
@@ -179,26 +179,49 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new apiResponce(200, {}, "User Logged Out"));
 });
 
-const refreshAccessToken = asyncHandler(async(req, res) =>{
+const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRereshToken = req.cookies.refreshToken || req.body.refreshToken
 
-  if(!incomingRereshToken){
+  if (!incomingRereshToken) {
     throw new apiError(401, "unauthorized request")
   }
-  
-  const decodedToken = jwt.verify(
-    incomingRereshToken,
-    process.env.REFRESH_TOKEN_SECRET
 
-  )
+  try {
+    const decodedToken = jwt.verify(
+      incomingRereshToken,
+      process.env.REFRESH_TOKEN_SECRET
 
-  const tempuser = await user.findById(decodedToken?._id)
-  if(!tempuser){
-    throw new apiError(401, "Invalid Refresh Token")
-  }
+    )
 
-  if(incomingRereshToken !== tempuser?.refreshToken){
-    throw new apiError(401, "refresh token i expired or used")
+    const tempuser = await user.findById(decodedToken?._id)
+    if (!tempuser) {
+      throw new apiError(401, "Invalid Refresh Token")
+    }
+
+    if (incomingRereshToken !== tempuser?.refreshToken) {
+      throw new apiError(401, "refresh token i expired or used")
+    }
+
+    const options = {
+      httpOnly: true,
+      secure: true
+    }
+
+    const { accessToken, newRefreshToken } = await generateAccessAndRefereshTokens(tempuser._id)
+
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", newRefreshToken, options)
+      .json(
+        new apiResponce(
+          200,
+          { accessToken, refreshToken: newRefreshToken },
+          "Access Token Refreshed"
+        )
+      )
+  } catch (error) {
+    throw new apiError(401, error?.message || "Invalid Refresh Token")
   }
 })
-export { regiserUser, loginUser, logoutUser };
+export { regiserUser, loginUser, logoutUser, refreshAccessToken };
