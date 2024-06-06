@@ -199,7 +199,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       throw new apiError(401, "Invalid Refresh Token")
     }
 
-    if (!incomingRereshToken !== tempuser?.refreshToken) {
+    if (incomingRereshToken !== tempuser?.refreshToken) {
       throw new apiError(401, "refresh token i expired or used")
     }
 
@@ -228,10 +228,10 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
 const changeCurrentPassword = asyncHandler(async (req, res) => {
   const { oldPassord, newPassword } = req.body
-  const tempuser = await user.findById(req.user?._id)
+  const tempuser = await user.findById(req.tempuser?._id)
   const isPasswordCorrect = await tempuser.isPasswordCorrect(oldPassord)
   if (!isPasswordCorrect) {
-    throw new apiError(400, "Invalid Password")
+    throw new apiError(400, "Invalid Old Password")
   }
 
   tempuser.password = newPassword
@@ -239,7 +239,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new apiResponce(400, {}, "Password Change Sucessfully"))
+    .json(new apiResponce(200, {}, "Password Changed Sucessfully"))
 
 })
 
@@ -384,9 +384,6 @@ const getUserChanelProfile = asyncHandler(async (req, res) => {
         coverImage: 1,
         email: 1
 
-
-
-
       }
     }
 
@@ -420,7 +417,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
         pipeline: [
           {
             $lookup: {
-              from: "user",
+              from: "users",
               localField: "owner",
               foreignField: "_id",
               as: "owner",
@@ -437,9 +434,9 @@ const getWatchHistory = asyncHandler(async (req, res) => {
             }
           },
           {
-            $addFields:{
-              owner:{
-                $first :"$owner"
+            $addFields: {
+              owner: {
+                $first: "$owner"
               }
             }
           }
@@ -449,11 +446,11 @@ const getWatchHistory = asyncHandler(async (req, res) => {
   ])
 
   return res
-  .status(200)
-  .json(
-    new apiResponce(200, user[0].watchHistory,
-      "watch history fetched sucessfully")
-  )
+    .status(200)
+    .json(
+      new apiResponce(200, user[0].watchHistory,
+        "watch history fetched sucessfully")
+    )
 })
 export {
   regiserUser,
